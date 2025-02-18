@@ -58,6 +58,6 @@ jobs:
           commit_username: "PaloMiku"
           commit_email: "palomiku@outlook.com"
           ssh_private_key: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
-          commit_message: Update AUR package
+          commit_message: Update to ${NEW_VERSION}
           ssh_keyscan_types: rsa,ecdsa,ed25519
 
