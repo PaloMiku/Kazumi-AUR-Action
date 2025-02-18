@@ -32,16 +32,19 @@ jobs:
         id: check_update
         run: |
           if [ "${{ env.latest_tag }}" = "${{ env.current_pkgver }}" ]; then
-            echo "No update required."
-            echo "update_needed=false" >> $GITHUB_ENV
+          echo "No update required."
+          echo "update_needed=false" >> $GITHUB_ENV
+          echo "update_needed=false" >> $GITHUB_OUTPUT
           else
             echo "Update required: new version ${{ env.latest_tag }} found (current: ${{ env.current_pkgver }})"
             echo "update_needed=true" >> $GITHUB_ENV
+            echo "update_needed=true" >> $GITHUB_OUTPUT
           fi
+
       - name: Update PKGBUILD if New Version Found
-        if: ${{ steps.check_update.outputs.update_needed == 'true' }}
+        if: steps.check_update.outputs.update_needed == 'true'
         run: |
-          NEW_VERSION="${{ steps.get_release.outputs.latest_tag }}"
+          NEW_VERSION="${{ env.latest_tag }}"
           sed -i "s/^pkgver=.*/pkgver=${NEW_VERSION}/" PKGBUILD
           echo "Running updpkgsums in an Arch Linux container..."
           docker run --rm -v "$PWD":/pkg archlinux/base /bin/bash -c "pacman -Sy --noconfirm base-devel && cd /pkg && updpkgsums"
