@@ -46,7 +46,6 @@ jobs:
         run: |
           NEW_VERSION="${{ env.latest_tag }}"
           sed -i "s/^pkgver=.*/pkgver=${NEW_VERSION}/" PKGBUILD
-          makepkg --printsrcinfo > .SRCINFO
 
       - name: Publish AUR package
         uses: KSXGitHub/github-actions-deploy-aur@v4.1.1
