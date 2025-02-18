@@ -38,21 +38,18 @@ jobs:
             echo "Update required: new version ${{ env.latest_tag }} found (current: ${{ env.current_pkgver }})"
             echo "update_needed=true" >> $GITHUB_ENV
           fi
-
       - name: Update PKGBUILD if New Version Found
-        if: env.update_needed == 'true'
+        if: ${{ steps.check_update.outputs.update_needed == 'true' }}
         run: |
-          sed -i "s/^pkgver=.*/pkgver=${{ env.latest_tag }}/" PKGBUILD
-          
-          # sed -i "s|/archive/.*\.tar\.gz|/archive/${{ env.latest_tag }}.tar.gz|" PKGBUILD
-
-          updpkgsums
-
+          NEW_VERSION="${{ steps.get_release.outputs.latest_tag }}"
+          sed -i "s/^pkgver=.*/pkgver=${NEW_VERSION}/" PKGBUILD
+          echo "Running updpkgsums in an Arch Linux container..."
+          docker run --rm -v "$PWD":/pkg archlinux/base /bin/bash -c "pacman -Sy --noconfirm base-devel && cd /pkg && updpkgsums"
+          makepkg --printsrcinfo > .SRCINFO
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-
-          git commit -am "Update to version ${{ env.latest_tag }}"
-          git push origin HEAD
+          git add PKGBUILD .SRCINFO
+          git commit -m "Update to version ${NEW_VERSION}"
 
       - name: Publish Package to AUR
         if: env.update_needed == 'true'
