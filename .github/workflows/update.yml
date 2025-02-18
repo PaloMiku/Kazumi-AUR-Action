@@ -56,7 +56,7 @@ jobs:
 
       - name: Publish Package to AUR
         if: env.update_needed == 'true'
-        uses: KSXGitHub/github-actions-deploy-aur@v4
+        uses: KSXGitHub/github-actions-deploy-aur@v3
         with:
           pkgname: "Kazumi" 
           commit_username: "PaloMiku"
