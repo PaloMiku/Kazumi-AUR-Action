@@ -9,9 +9,7 @@ jobs:
   update-aur:
     runs-on: ubuntu-latest
     env:
-      UPSTREAM_OWNER: "Predidit"
-      UPSTREAM_REPO: "Kazumi"
-      API_URL: "https://api.github.com/repos/${{ env.UPSTREAM_OWNER }}/${{ env.UPSTREAM_REPO }}/releases/latest"
+      API_URL: "https://api.github.com/repos/Predidit/Kazumi/releases/latest"
     steps:
       - name: Checkout AUR Repository
         uses: actions/checkout@v4
