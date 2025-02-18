@@ -47,6 +47,19 @@ jobs:
           NEW_VERSION="${{ env.latest_tag }}"
           sed -i "s/^pkgver=.*/pkgver=${NEW_VERSION}/" PKGBUILD
 
+      - name: Commit updated PKGBUILD to repository
+        if: steps.check_update.outputs.update_needed == 'true'
+        run: |
+          git config user.name "PaloMiku"
+          git config user.email "palomiku@outlook.com"
+          git add PKGBUILD
+          if ! git diff --cached --quiet; then
+            git commit -m "Update PKGBUILD to ${{ env.latest_tag }}"
+            git push origin HEAD:${{ github.ref }}
+          else
+            echo "No changes to commit."
+          fi
+
       - name: Publish AUR package
         if: steps.check_update.outputs.update_needed == 'true'
         uses: KSXGitHub/github-actions-deploy-aur@v4.1.1
