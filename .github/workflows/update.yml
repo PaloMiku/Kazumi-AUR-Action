@@ -46,8 +46,6 @@ jobs:
         run: |
           NEW_VERSION="${{ env.latest_tag }}"
           sed -i "s/^pkgver=.*/pkgver=${NEW_VERSION}/" PKGBUILD
-          echo "Running updpkgsums in an Arch Linux container..."
-          docker run --rm -v "$PWD":/pkg archlinux/base /bin/bash -c "pacman -Sy --noconfirm base-devel && cd /pkg && updpkgsums"
           makepkg --printsrcinfo > .SRCINFO
 
       - name: Publish AUR package
