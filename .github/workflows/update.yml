@@ -32,9 +32,9 @@ jobs:
         id: check_update
         run: |
           if [ "${{ env.latest_tag }}" = "${{ env.current_pkgver }}" ]; then
-          echo "No update required."
-          echo "update_needed=false" >> $GITHUB_ENV
-          echo "update_needed=false" >> $GITHUB_OUTPUT
+            echo "No update required."
+            echo "update_needed=false" >> $GITHUB_ENV
+            echo "update_needed=false" >> $GITHUB_OUTPUT
           else
             echo "Update required: new version ${{ env.latest_tag }} found (current: ${{ env.current_pkgver }})"
             echo "update_needed=true" >> $GITHUB_ENV
@@ -48,6 +48,7 @@ jobs:
           sed -i "s/^pkgver=.*/pkgver=${NEW_VERSION}/" PKGBUILD
 
       - name: Publish AUR package
+        if: steps.check_update.outputs.update_needed == 'true'
         uses: KSXGitHub/github-actions-deploy-aur@v4.1.1
         with:
           pkgname: kazumi
@@ -55,6 +56,5 @@ jobs:
           commit_username: "PaloMiku"
           commit_email: "palomiku@outlook.com"
           ssh_private_key: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
-          commit_message: Update to ${NEW_VERSION}
+          commit_message: "Update to ${{ env.latest_tag }}"
           ssh_keyscan_types: rsa,ecdsa,ed25519
-
