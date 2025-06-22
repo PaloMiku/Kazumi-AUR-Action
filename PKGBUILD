@@ -1,8 +1,8 @@
 # Maintainer: PaloMiku <palomiku@outlook.com>
-pkgname=kazumi
+pkgname=kazumi-bin
 pkgver=1.7.3
 pkgrel=1
-pkgdesc="从Kazumi仓库tar.gz文件构建，基于自定义规则的番剧采集APP，支持流媒体在线观看，支持弹幕。"
+pkgdesc="基于自定义规则的番剧采集APP，支持流媒体在线观看，支持弹幕。"
 arch=('x86_64')
 url='https://github.com/Predidit/Kazumi'
 license=('GPL3')
