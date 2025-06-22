@@ -64,7 +64,7 @@ jobs:
         if: steps.check_update.outputs.update_needed == 'true'
         uses: KSXGitHub/github-actions-deploy-aur@v4.1.1
         with:
-          pkgname: kazumi
+          pkgname: kazumi-bin
           pkgbuild: ./PKGBUILD
           commit_username: "PaloMiku"
           commit_email: "palomiku@outlook.com"
