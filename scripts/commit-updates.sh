@@ -5,9 +5,11 @@ set -euo pipefail
 kazumi_update="${KAZUMI_UPDATE:-false}"
 clawx_update="${CLAWX_UPDATE:-false}"
 animeko_update="${ANIMEKO_UPDATE:-false}"
+echomusic_update="${ECHOMUSIC_UPDATE:-false}"
 kazumi_latest="${KAZUMI_LATEST:-}"
 clawx_latest="${CLAWX_LATEST:-}"
 animeko_latest="${ANIMEKO_LATEST:-}"
+echomusic_latest="${ECHOMUSIC_LATEST:-}"
 git_ref="${GITHUB_REF:-}"
 
 git config user.name "PaloMiku"
@@ -16,7 +18,8 @@ git config user.email "palomiku@outlook.com"
 git add \
   packages/kazumi-bin/PKGBUILD \
   packages/clawx-bin/PKGBUILD \
-  packages/animeko-appimage-beta/PKGBUILD
+  packages/animeko-appimage-beta/PKGBUILD \
+  packages/echomusic-bin/PKGBUILD
 
 updates=()
 if [ "$kazumi_update" = "true" ]; then
@@ -27,6 +30,9 @@ if [ "$clawx_update" = "true" ]; then
 fi
 if [ "$animeko_update" = "true" ]; then
   updates+=("animeko-appimage-beta:${animeko_latest}")
+fi
+if [ "$echomusic_update" = "true" ]; then
+  updates+=("echomusic-bin:${echomusic_latest}")
 fi
 
 if git diff --cached --quiet; then
