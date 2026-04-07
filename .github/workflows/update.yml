@@ -21,8 +21,10 @@ jobs:
         env:
           KAZUMI_UPDATE: ${{ steps.detect.outputs.kazumi_update }}
           CLAWX_UPDATE: ${{ steps.detect.outputs.clawx_update }}
+          ANIMEKO_UPDATE: ${{ steps.detect.outputs.animeko_update }}
           KAZUMI_LATEST: ${{ steps.detect.outputs.kazumi_latest }}
           CLAWX_LATEST: ${{ steps.detect.outputs.clawx_latest }}
+          ANIMEKO_LATEST: ${{ steps.detect.outputs.animeko_latest }}
         run: ./scripts/commit-updates.sh
 
       - name: Publish kazumi-bin to AUR
@@ -47,4 +49,16 @@ jobs:
           commit_email: "palomiku@outlook.com"
           ssh_private_key: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
           commit_message: "Update to ${{ steps.detect.outputs.clawx_latest }}"
+          ssh_keyscan_types: rsa,ecdsa,ed25519
+
+      - name: Publish animeko-appimage-beta to AUR
+        if: steps.detect.outputs.animeko_update == 'true'
+        uses: KSXGitHub/github-actions-deploy-aur@v4.1.2
+        with:
+          pkgname: animeko-appimage-beta
+          pkgbuild: ./packages/animeko-appimage-beta/PKGBUILD
+          commit_username: "PaloMiku"
+          commit_email: "palomiku@outlook.com"
+          ssh_private_key: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
+          commit_message: "Update to ${{ steps.detect.outputs.animeko_latest }}"
           ssh_keyscan_types: rsa,ecdsa,ed25519
