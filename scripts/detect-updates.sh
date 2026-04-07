@@ -80,10 +80,9 @@ update_stable_deb_package() {
   local label="$1"
   local api_url="$2"
   local pkgfile="$3"
-  local source_prefix="$4"
-  local source_name_template="$5"
-  local strip_v="$6"
-  local release_json latest_tag latest current source_name source_url
+  local source_url_template="$4"
+  local strip_v="$5"
+  local release_json latest_tag latest current source_url
 
   release_json=$(curl -fsSL "$api_url")
   latest_tag=$(printf '%s' "$release_json" | jq -r '.tag_name')
@@ -104,8 +103,7 @@ update_stable_deb_package() {
   if [ "$latest" != "$current" ]; then
     printf -v "${label}_update" '%s' true
     sed -i "s/^pkgver=.*/pkgver=${latest}/" "$pkgfile"
-    printf -v source_name "$source_name_template" "$latest"
-    source_url="${source_prefix}${source_name}"
+    printf -v source_url "$source_url_template" "$latest" "$latest"
     set_deb_sha512 "$pkgfile" "$source_url"
     echo "${label} update: ${current} -> ${latest}"
   else
@@ -154,16 +152,14 @@ update_stable_deb_package \
   "kazumi" \
   "$KAZUMI_API" \
   "$KAZUMI_PKG" \
-  "https://github.com/Predidit/Kazumi/releases/download/" \
-  "%s/Kazumi_linux_%s_amd64.deb" \
+  "https://github.com/Predidit/Kazumi/releases/download/%s/Kazumi_linux_%s_amd64.deb" \
   false
 
 update_stable_deb_package \
   "clawx" \
   "$CLAWX_API" \
   "$CLAWX_PKG" \
-  "https://github.com/ValueCell-ai/ClawX/releases/download/v" \
-  "%s/ClawX-%s-linux-amd64.deb" \
+  "https://github.com/ValueCell-ai/ClawX/releases/download/v%s/ClawX-%s-linux-amd64.deb" \
   true
 
 update_animeko_package
@@ -172,8 +168,7 @@ update_stable_deb_package \
   "echomusic" \
   "$ECHOMUSIC_API" \
   "$ECHOMUSIC_PKG" \
-  "https://github.com/hoowhoami/EchoMusic/releases/download/v" \
-  "%s/EchoMusic-%s-linux-amd64.deb" \
+  "https://github.com/hoowhoami/EchoMusic/releases/download/v%s/EchoMusic-%s-linux-amd64.deb" \
   true
 
 any_update=false
