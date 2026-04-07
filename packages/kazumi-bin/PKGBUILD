@@ -12,7 +12,7 @@ depends=('libayatana-appindicator' 'xdg-user-dirs' 'webkit2gtk-4.1')
 provides=("${_pkgname}")
 conflicts=("${_pkgname}")
 source=("${_pkgname}-${pkgver}.tar.gz::https://github.com/Predidit/Kazumi/releases/download/${pkgver}/Kazumi_linux_${pkgver}_amd64.tar.gz"
-	"https://raw.githubusercontent.com/Predidit/Kazumi/refs/tags/${pkgver}/assets/linux/io.github.Predidit.Kazumi.desktop")
+        "https://raw.githubusercontent.com/Predidit/Kazumi/refs/tags/${pkgver}/assets/linux/io.github.Predidit.Kazumi.desktop")
 sha256sums=('SKIP'
             'SKIP')
 

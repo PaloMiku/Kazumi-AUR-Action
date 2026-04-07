@@ -1,73 +1,50 @@
-name: Auto Update AUR Package
+name: Auto Update AUR Packages
 
 on:
   schedule:
     - cron: "0 16 * * *"
-  workflow_dispatch: 
+  workflow_dispatch:
 
 jobs:
   update-aur:
     runs-on: ubuntu-latest
-    env:
-      API_URL: "https://api.github.com/repos/Predidit/Kazumi/releases/latest"
     steps:
-      - name: Checkout AUR Repository
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Get Latest Release Version from Upstream
-        id: get_release
-        run: |
-          LATEST_TAG=$(curl -s $API_URL | jq -r '.tag_name')
-          echo "Latest release tag: $LATEST_TAG"
-          echo "latest_tag=$LATEST_TAG" >> $GITHUB_ENV
+      - name: Detect upstream updates
+        id: detect
+        run: ./scripts/detect-updates.sh
 
-      - name: Extract Current pkgver from PKGBUILD
-        id: get_pkgver
-        run: |
-          CURRENT_PKGVER=$(grep -oP '^pkgver=\K.*' PKGBUILD)
-          echo "Current pkgver in PKGBUILD: $CURRENT_PKGVER"
-          echo "current_pkgver=$CURRENT_PKGVER" >> $GITHUB_ENV
+      - name: Commit updated files to repository
+        if: steps.detect.outputs.any_update == 'true'
+        env:
+          KAZUMI_UPDATE: ${{ steps.detect.outputs.kazumi_update }}
+          CLAWX_UPDATE: ${{ steps.detect.outputs.clawx_update }}
+          KAZUMI_LATEST: ${{ steps.detect.outputs.kazumi_latest }}
+          CLAWX_LATEST: ${{ steps.detect.outputs.clawx_latest }}
+        run: ./scripts/commit-updates.sh
 
-      - name: Check if Update is Needed
-        id: check_update
-        run: |
-          if [ "${{ env.latest_tag }}" = "${{ env.current_pkgver }}" ]; then
-            echo "No update required."
-            echo "update_needed=false" >> $GITHUB_ENV
-            echo "update_needed=false" >> $GITHUB_OUTPUT
-          else
-            echo "Update required: new version ${{ env.latest_tag }} found (current: ${{ env.current_pkgver }})"
-            echo "update_needed=true" >> $GITHUB_ENV
-            echo "update_needed=true" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Update PKGBUILD if New Version Found
-        if: steps.check_update.outputs.update_needed == 'true'
-        run: |
-          NEW_VERSION="${{ env.latest_tag }}"
-          sed -i "s/^pkgver=.*/pkgver=${NEW_VERSION}/" PKGBUILD
-
-      - name: Commit updated PKGBUILD to repository
-        if: steps.check_update.outputs.update_needed == 'true'
-        run: |
-          git config user.name "PaloMiku"
-          git config user.email "palomiku@outlook.com"
-          git add PKGBUILD
-          if ! git diff --cached --quiet; then
-            git commit -m "Update PKGBUILD to ${{ env.latest_tag }}"
-            git push origin HEAD:${{ github.ref }}
-          else
-            echo "No changes to commit."
-          fi
-
-      - name: Publish AUR package
-        if: steps.check_update.outputs.update_needed == 'true'
+      - name: Publish kazumi-bin to AUR
+        if: steps.detect.outputs.kazumi_update == 'true' && steps.detect.outputs.kazumi_aur_exists == 'true'
         uses: KSXGitHub/github-actions-deploy-aur@v4.1.1
         with:
           pkgname: kazumi-bin
-          pkgbuild: ./PKGBUILD
+          pkgbuild: ./packages/kazumi-bin/PKGBUILD
           commit_username: "PaloMiku"
           commit_email: "palomiku@outlook.com"
           ssh_private_key: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
-          commit_message: "Update to ${{ env.latest_tag }}"
+          commit_message: "Update to ${{ steps.detect.outputs.kazumi_latest }}"
+          ssh_keyscan_types: rsa,ecdsa,ed25519
+
+      - name: Publish clawx-bin to AUR
+        if: steps.detect.outputs.clawx_update == 'true' && steps.detect.outputs.clawx_aur_exists == 'true'
+        uses: KSXGitHub/github-actions-deploy-aur@v4.1.1
+        with:
+          pkgname: clawx-bin
+          pkgbuild: ./packages/clawx-bin/PKGBUILD
+          commit_username: "PaloMiku"
+          commit_email: "palomiku@outlook.com"
+          ssh_private_key: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
+          commit_message: "Update to ${{ steps.detect.outputs.clawx_latest }}"
           ssh_keyscan_types: rsa,ecdsa,ed25519
