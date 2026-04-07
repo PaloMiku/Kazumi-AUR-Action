@@ -23,14 +23,6 @@ if [ -z "${GITHUB_OUTPUT:-}" ]; then
   exit 1
 fi
 
-aur_exists() {
-  local name="$1"
-  local count
-
-  count=$(curl -fsSL "https://aur.archlinux.org/rpc/v5/info/${name}" | jq -r '.resultcount')
-  [ "$count" != "0" ]
-}
-
 kazumi_latest=$(curl -fsSL "$KAZUMI_API" | jq -r '.tag_name')
 kazumi_current=$(grep -oP '^pkgver=\K.*' "$KAZUMI_PKG")
 
@@ -66,25 +58,10 @@ if [ "$kazumi_update" = true ] || [ "$clawx_update" = true ]; then
   any_update=true
 fi
 
-kazumi_aur_exists=true
-clawx_aur_exists=true
-
-if ! aur_exists "kazumi-bin"; then
-  kazumi_aur_exists=false
-  echo "Warning: AUR package kazumi-bin does not exist, skip deploy"
-fi
-
-if ! aur_exists "clawx-bin"; then
-  clawx_aur_exists=false
-  echo "Warning: AUR package clawx-bin does not exist, skip deploy"
-fi
-
 {
   echo "any_update=${any_update}"
   echo "kazumi_update=${kazumi_update}"
   echo "clawx_update=${clawx_update}"
   echo "kazumi_latest=${kazumi_latest}"
   echo "clawx_latest=${clawx_latest}"
-  echo "kazumi_aur_exists=${kazumi_aur_exists}"
-  echo "clawx_aur_exists=${clawx_aur_exists}"
 } >> "$GITHUB_OUTPUT"
