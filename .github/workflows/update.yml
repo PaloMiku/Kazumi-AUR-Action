@@ -27,7 +27,7 @@ jobs:
 
       - name: Publish kazumi-bin to AUR
         if: steps.detect.outputs.kazumi_update == 'true'
-        uses: KSXGitHub/github-actions-deploy-aur@v4.1.1
+        uses: KSXGitHub/github-actions-deploy-aur@v4.1.2
         with:
           pkgname: kazumi-bin
           pkgbuild: ./packages/kazumi-bin/PKGBUILD
@@ -39,7 +39,7 @@ jobs:
 
       - name: Publish clawx-bin to AUR
         if: steps.detect.outputs.clawx_update == 'true'
-        uses: KSXGitHub/github-actions-deploy-aur@v4.1.1
+        uses: KSXGitHub/github-actions-deploy-aur@v4.1.2
         with:
           pkgname: clawx-bin
           pkgbuild: ./packages/clawx-bin/PKGBUILD
