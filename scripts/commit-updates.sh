@@ -2,56 +2,47 @@
 
 set -euo pipefail
 
-kazumi_update="${KAZUMI_UPDATE:-false}"
-clawx_update="${CLAWX_UPDATE:-false}"
-animeko_update="${ANIMEKO_UPDATE:-false}"
-echomusic_update="${ECHOMUSIC_UPDATE:-false}"
-surf_update="${SURF_UPDATE:-false}"
-kazumi_latest="${KAZUMI_LATEST:-}"
-clawx_latest="${CLAWX_LATEST:-}"
-animeko_latest="${ANIMEKO_LATEST:-}"
-echomusic_latest="${ECHOMUSIC_LATEST:-}"
-surf_latest="${SURF_LATEST:-}"
+updated_packages_json="${UPDATED_PACKAGES:-[]}"
 git_ref="${GITHUB_REF:-}"
 
 git config user.name "PaloMiku"
 git config user.email "palomiku@outlook.com"
 
-git add \
-  packages/kazumi-bin/PKGBUILD \
-  packages/clawx-bin/PKGBUILD \
-  packages/animeko-appimage-beta/PKGBUILD \
-  packages/echomusic-bin/PKGBUILD \
-  packages/deta-surf-appimage/PKGBUILD
+mapfile -t updated_packages < <(printf '%s' "$updated_packages_json" | jq -r '.[]')
 
-updates=()
-if [ "$kazumi_update" = "true" ]; then
-  updates+=("kazumi-bin:${kazumi_latest}")
+if [ "${#updated_packages[@]}" -eq 0 ]; then
+  echo "No updated packages provided."
+  exit 0
 fi
-if [ "$clawx_update" = "true" ]; then
-  updates+=("clawx-bin:${clawx_latest}")
-fi
-if [ "$animeko_update" = "true" ]; then
-  updates+=("animeko-appimage-beta:${animeko_latest}")
-fi
-if [ "$echomusic_update" = "true" ]; then
-  updates+=("echomusic-bin:${echomusic_latest}")
-fi
-if [ "$surf_update" = "true" ]; then
-  updates+=("deta-surf-appimage:${surf_latest}")
-fi
+
+paths_to_add=()
+update_labels=()
+
+for pkgname in "${updated_packages[@]}"; do
+  pkgdir="packages/${pkgname}"
+
+  if [ ! -d "$pkgdir" ]; then
+    echo "Missing package directory: ${pkgdir}" >&2
+    exit 1
+  fi
+
+  paths_to_add+=("${pkgdir}/PKGBUILD")
+  if [ -f "${pkgdir}/.SRCINFO" ]; then
+    paths_to_add+=("${pkgdir}/.SRCINFO")
+  fi
+
+  pkgver=$(sed -nE "s/^pkgver=\"?([^\"']+)\"?$/\1/p" "${pkgdir}/PKGBUILD" | head -n1)
+  update_labels+=("${pkgname}:${pkgver}")
+done
+
+git add "${paths_to_add[@]}"
 
 if git diff --cached --quiet; then
   echo "No changes to commit."
   exit 0
 fi
 
-if [ "${#updates[@]}" -eq 0 ]; then
-  echo "No update labels found, but files changed; using fallback message"
-  git commit -m "Update package definitions"
-else
-  git commit -m "Update ${updates[*]}"
-fi
+git commit -m "Update ${update_labels[*]}"
 
 if [ -z "$git_ref" ]; then
   echo "GITHUB_REF is required for push" >&2

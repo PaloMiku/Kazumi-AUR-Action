@@ -2,36 +2,17 @@
 
 set -euo pipefail
 
-KAZUMI_API="https://api.github.com/repos/Predidit/Kazumi/releases/latest"
-CLAWX_API="https://api.github.com/repos/ValueCell-ai/ClawX/releases/latest"
-ANIMEKO_API="https://api.github.com/repos/open-ani/animeko/releases?per_page=100"
-ECHOMUSIC_API="https://api.github.com/repos/hoowhoami/EchoMusic/releases/latest"
-SURF_API="https://api.github.com/repos/deta/surf/releases/latest"
-
-KAZUMI_PKG="packages/kazumi-bin/PKGBUILD"
-CLAWX_PKG="packages/clawx-bin/PKGBUILD"
-ANIMEKO_PKG="packages/animeko-appimage-beta/PKGBUILD"
-ECHOMUSIC_PKG="packages/echomusic-bin/PKGBUILD"
-SURF_PKG="packages/deta-surf-appimage/PKGBUILD"
-
-required_files=(
-  "$KAZUMI_PKG"
-  "$CLAWX_PKG"
-  "$ANIMEKO_PKG"
-  "$ECHOMUSIC_PKG"
-  "$SURF_PKG"
-)
-
-for file in "${required_files[@]}"; do
-  if [ ! -f "$file" ]; then
-    echo "Missing PKGBUILD: $file" >&2
-    exit 1
-  fi
-done
-
 if [ -z "${GITHUB_OUTPUT:-}" ]; then
   echo "GITHUB_OUTPUT is required" >&2
   exit 1
+fi
+
+PACKAGES_DIR="packages"
+GITHUB_API="https://api.github.com/repos"
+GITHUB_TOKEN_HEADER=()
+
+if [ -n "${GITHUB_TOKEN:-}" ]; then
+  GITHUB_TOKEN_HEADER=(-H "Authorization: Bearer ${GITHUB_TOKEN}")
 fi
 
 extract_pkgver() {
@@ -45,191 +26,201 @@ download_sha512() {
 
   tmpfile=$(mktemp)
   trap 'rm -f "$tmpfile"' RETURN
-  curl -fsSL "$source_url" -o "$tmpfile"
+  curl -fsSL "${GITHUB_TOKEN_HEADER[@]}" "$source_url" -o "$tmpfile"
   sha512sum "$tmpfile" | awk '{print $1}'
   rm -f "$tmpfile"
   trap - RETURN
 }
 
-set_deb_sha512() {
+update_pkgbuild_field() {
   local pkgfile="$1"
-  local source_url="$2"
-  local source_sha
-
-  source_sha=$(download_sha512 "$source_url")
-  sed -i -E "s|^sha512sums=.*|sha512sums=('${source_sha}')|" "$pkgfile"
+  local field="$2"
+  local value="$3"
+  sed -i -E "s|^${field}=.*$|${field}=${value}|" "$pkgfile"
 }
 
-normalize_animeko_pkgver() {
-  local tag="$1"
-  printf '%s' "${tag#v}" | sed -E 's/-?(alpha|beta)/\1/g; s/-/./g; s/\.\././g'
-}
-
-normalize_animeko_source_ver() {
-  local pkgver="$1"
-  printf '%s' "$pkgver" | sed -E 's/(alpha|beta)/-\1/g; s/-{2,}/-/g'
-}
-
-normalize_surf_pkgver() {
-  local tag="$1"
-  printf '%s' "$tag" | sed -E 's/-beta\./beta/g; s/-rc\./rc/g'
-}
-
-normalize_surf_source_ver() {
-  local pkgver="$1"
-  printf '%s' "$pkgver" | sed -E 's/beta/-beta./; s/rc/-rc./'
-}
-
-set_animeko_sha512() {
+update_array_field() {
   local pkgfile="$1"
-  local source_url="$2"
-  local sha
-
-  sha=$(download_sha512 "$source_url")
-  sed -i -E "s|^sha512sums_x86_64=.*|sha512sums_x86_64=('${sha}')|" "$pkgfile"
+  local field="$2"
+  local value="$3"
+  sed -i -E "s|^${field}=.*$|${field}=(\"${value}\")|" "$pkgfile"
 }
 
-update_surf_package() {
-  local release_json latest_tag latest current source_ver source_url
+update_checksum_field() {
+  local pkgfile="$1"
+  local field="$2"
+  local source_url="$3"
+  local checksum
 
-  release_json=$(curl -fsSL "$SURF_API")
-  latest_tag=$(printf '%s' "$release_json" | jq -r '.tag_name')
-  surf_latest=$(normalize_surf_pkgver "$latest_tag")
-  current=$(extract_pkgver "$SURF_PKG")
-
-  if [ "$(printf '%s' "$release_json" | jq -r '.prerelease')" = "true" ]; then
-    surf_update=false
-    echo "deta-surf-appimage latest release is prerelease (${latest_tag}), skip update"
-    return
-  fi
-
-  if [ "$surf_latest" != "$current" ]; then
-    surf_update=true
-    sed -i -E "s/^pkgver=\"?.*\"?$/pkgver=\"${surf_latest}\"/" "$SURF_PKG"
-    source_ver=$(normalize_surf_source_ver "$surf_latest")
-    source_url="https://github.com/deta/surf/releases/download/${source_ver}/Surf-${source_ver}.x86_64.AppImage"
-    sed -i -E "s|^source_x86_64=.*|source_x86_64=(\"Surf-${source_ver}.x86_64.AppImage::${source_url}\")|" "$SURF_PKG"
-    set_animeko_sha512 "$SURF_PKG" "$source_url"
-    echo "deta-surf-appimage update: ${current} -> ${surf_latest}"
-  else
-    surf_update=false
-    echo "deta-surf-appimage already latest: ${current}"
-  fi
+  checksum=$(download_sha512 "$source_url")
+  sed -i -E "s|^${field}=.*$|${field}=('${checksum}')|" "$pkgfile"
 }
 
-update_stable_deb_package() {
-  local label="$1"
-  local api_url="$2"
-  local pkgfile="$3"
-  local source_url_template="$4"
-  local strip_v="$5"
-  local release_json latest_tag latest current source_url
+normalize_tag_to_pkgver() {
+  local strategy="$1"
+  local tag="$2"
 
-  release_json=$(curl -fsSL "$api_url")
-  latest_tag=$(printf '%s' "$release_json" | jq -r '.tag_name')
-  latest="$latest_tag"
-  if [ "$strip_v" = "true" ]; then
-    latest=${latest_tag#v}
-  fi
-
-  printf -v "${label}_latest" '%s' "$latest"
-  current=$(extract_pkgver "$pkgfile")
-
-  if [ "$(printf '%s' "$release_json" | jq -r '.prerelease')" = "true" ]; then
-    printf -v "${label}_update" '%s' false
-    echo "${label} latest release is prerelease (${latest_tag}), skip update"
-    return
-  fi
-
-  if [ "$latest" != "$current" ]; then
-    printf -v "${label}_update" '%s' true
-    sed -i "s/^pkgver=.*/pkgver=${latest}/" "$pkgfile"
-    printf -v source_url "$source_url_template" "$latest" "$latest"
-    set_deb_sha512 "$pkgfile" "$source_url"
-    echo "${label} update: ${current} -> ${latest}"
-  else
-    printf -v "${label}_update" '%s' false
-    echo "${label} already latest: ${current}"
-  fi
+  case "$strategy" in
+    identity)
+      printf '%s' "$tag"
+      ;;
+    strip_v)
+      printf '%s' "${tag#v}"
+      ;;
+    animeko_beta)
+      printf '%s' "${tag#v}" | sed -E 's/-?(alpha|beta)/\1/g; s/-/./g; s/\.\././g'
+      ;;
+    surf_beta)
+      printf '%s' "$tag" | sed -E 's/-beta\./beta/g; s/-rc\./rc/g'
+      ;;
+    *)
+      echo "Unknown tag_to_pkgver strategy: ${strategy}" >&2
+      exit 1
+      ;;
+  esac
 }
 
-update_animeko_package() {
-  local releases_json latest_tag latest current source_ver source_url
+normalize_pkgver_to_tag() {
+  local strategy="$1"
+  local pkgver="$2"
 
-  releases_json=$(curl -fsSL "$ANIMEKO_API")
-  latest_tag=$(printf '%s' "$releases_json" | jq -r '[.[] | select(.prerelease == true and (.tag_name | test("beta"; "i")))] | .[0].tag_name // ""')
-  if [ -z "$latest_tag" ]; then
-    latest_tag=$(printf '%s' "$releases_json" | jq -r '[.[] | select(.tag_name | test("beta"; "i"))] | .[0].tag_name // ""')
-  fi
-  if [ -z "$latest_tag" ]; then
-    echo "No animeko beta tag found" >&2
+  case "$strategy" in
+    identity)
+      printf '%s' "$pkgver"
+      ;;
+    strip_v)
+      printf 'v%s' "$pkgver"
+      ;;
+    animeko_beta)
+      printf 'v%s' "$pkgver" | sed -E 's/(alpha|beta)/-\1/g; s/-{2,}/-/g'
+      ;;
+    surf_beta)
+      printf '%s' "$pkgver" | sed -E 's/beta/-beta./; s/rc/-rc./'
+      ;;
+    *)
+      echo "Unknown pkgver_to_tag strategy: ${strategy}" >&2
+      exit 1
+      ;;
+  esac
+}
+
+render_source_template() {
+  local template="$1"
+  local pkgver="$2"
+  local tag="$3"
+  local tag_no_v="${tag#v}"
+
+  printf '%s' "$template" \
+    | sed -e "s|{pkgver}|${pkgver}|g" \
+          -e "s|{tag_no_v}|${tag_no_v}|g" \
+          -e "s|{tag}|${tag}|g"
+}
+
+fetch_github_latest_release() {
+  local repo="$1"
+  curl -fsSL "${GITHUB_TOKEN_HEADER[@]}" "${GITHUB_API}/${repo}/releases/latest"
+}
+
+fetch_github_releases() {
+  local repo="$1"
+  curl -fsSL "${GITHUB_TOKEN_HEADER[@]}" "${GITHUB_API}/${repo}/releases?per_page=100"
+}
+
+select_release_json() {
+  local strategy="$1"
+  local repo="$2"
+  local allow_prerelease="$3"
+  local releases_json release_json
+
+  case "$strategy" in
+    github_latest)
+      release_json=$(fetch_github_latest_release "$repo")
+      if [ "$allow_prerelease" != "true" ] && [ "$(printf '%s' "$release_json" | jq -r '.prerelease')" = "true" ]; then
+        printf ''
+        return
+      fi
+      printf '%s' "$release_json"
+      ;;
+    github_beta)
+      releases_json=$(fetch_github_releases "$repo")
+      if [ "$allow_prerelease" = "true" ]; then
+        release_json=$(printf '%s' "$releases_json" | jq -c '[.[] | select(.prerelease == true and (.tag_name | test("beta"; "i")))] | .[0] // empty')
+      else
+        release_json=$(printf '%s' "$releases_json" | jq -c '[.[] | select(.prerelease == false and (.tag_name | test("beta"; "i")))] | .[0] // empty')
+      fi
+      printf '%s' "$release_json"
+      ;;
+    *)
+      echo "Unknown release strategy: ${strategy}" >&2
+      exit 1
+      ;;
+  esac
+}
+
+updated_packages=()
+updated_versions=()
+
+while IFS= read -r metadata_file; do
+  package_dir=$(dirname "$metadata_file")
+  pkgbuild_file="${package_dir}/PKGBUILD"
+
+  if [ ! -f "$pkgbuild_file" ]; then
+    echo "Missing PKGBUILD for ${metadata_file}" >&2
     exit 1
   fi
 
-  latest=$(normalize_animeko_pkgver "$latest_tag")
-  animeko_latest="$latest"
-  current=$(extract_pkgver "$ANIMEKO_PKG")
+  pkgname=$(jq -r '.pkgname' "$metadata_file")
+  repo=$(jq -r '.repo' "$metadata_file")
+  release_strategy=$(jq -r '.release_strategy' "$metadata_file")
+  allow_prerelease=$(jq -r '.allow_prerelease' "$metadata_file")
+  tag_to_pkgver=$(jq -r '.tag_to_pkgver' "$metadata_file")
+  source_field=$(jq -r '.source_field' "$metadata_file")
+  source_template=$(jq -r '.source_template' "$metadata_file")
+  checksum_field=$(jq -r '.checksum_field' "$metadata_file")
 
-  if [ "$latest" != "$current" ]; then
-    animeko_update=true
-    sed -i -E "s/^pkgver=\"?.*\"?$/pkgver=\"${latest}\"/" "$ANIMEKO_PKG"
-    source_ver=$(normalize_animeko_source_ver "$latest")
-    source_url="https://github.com/open-ani/animeko/releases/download/v${source_ver}/ani-${source_ver}-linux-x86_64.appimage"
-    sed -i -E "s|^source_x86_64=.*|source_x86_64=(\"${source_url}\")|" "$ANIMEKO_PKG"
-    set_animeko_sha512 "$ANIMEKO_PKG" "$source_url"
-    echo "animeko-appimage-beta update: ${current} -> ${latest}"
-  else
-    animeko_update=false
-    echo "animeko-appimage-beta already latest: ${current}"
+  release_json=$(select_release_json "$release_strategy" "$repo" "$allow_prerelease")
+  if [ -z "$release_json" ] || [ "$release_json" = "null" ]; then
+    echo "${pkgname} no matching release found"
+    continue
   fi
-}
 
-kazumi_update=false
-clawx_update=false
-animeko_update=false
-echomusic_update=false
-surf_update=false
+  latest_tag=$(printf '%s' "$release_json" | jq -r '.tag_name')
+  latest_pkgver=$(normalize_tag_to_pkgver "$tag_to_pkgver" "$latest_tag")
+  current_pkgver=$(extract_pkgver "$pkgbuild_file")
 
-update_stable_deb_package \
-  "kazumi" \
-  "$KAZUMI_API" \
-  "$KAZUMI_PKG" \
-  "https://github.com/Predidit/Kazumi/releases/download/%s/Kazumi_linux_%s_amd64.deb" \
-  false
+  if [ "$latest_pkgver" != "$current_pkgver" ]; then
+    source_tag=$(normalize_pkgver_to_tag "$tag_to_pkgver" "$latest_pkgver")
+    source_value=$(render_source_template "$source_template" "$latest_pkgver" "$source_tag")
+    source_url=${source_value##*::}
+    if [ "$source_url" = "$source_value" ]; then
+      source_url="$source_value"
+    fi
 
-update_stable_deb_package \
-  "clawx" \
-  "$CLAWX_API" \
-  "$CLAWX_PKG" \
-  "https://github.com/ValueCell-ai/ClawX/releases/download/v%s/ClawX-%s-linux-amd64.deb" \
-  true
+    update_pkgbuild_field "$pkgbuild_file" "pkgver" "\"${latest_pkgver}\""
+    update_array_field "$pkgbuild_file" "$source_field" "$source_value"
+    update_checksum_field "$pkgbuild_file" "$checksum_field" "$source_url"
 
-update_animeko_package
+    updated_packages+=("$pkgname")
+    updated_versions+=("$latest_pkgver")
+    echo "${pkgname} update: ${current_pkgver} -> ${latest_pkgver}"
+  else
+    echo "${pkgname} already latest: ${current_pkgver}"
+  fi
+done < <(find "$PACKAGES_DIR" -mindepth 2 -maxdepth 2 -name package.json | sort)
 
-update_stable_deb_package \
-  "echomusic" \
-  "$ECHOMUSIC_API" \
-  "$ECHOMUSIC_PKG" \
-  "https://github.com/hoowhoami/EchoMusic/releases/download/v%s/EchoMusic-%s-linux-amd64.deb" \
-  true
-
-update_surf_package
-
-any_update=false
-if [ "$kazumi_update" = true ] || [ "$clawx_update" = true ] || [ "$animeko_update" = true ] || [ "$echomusic_update" = true ] || [ "$surf_update" = true ]; then
+if [ "${#updated_packages[@]}" -gt 0 ]; then
   any_update=true
+else
+  any_update=false
 fi
+
+packages_json=$(printf '%s\n' "${updated_packages[@]:-}" | jq -R . | jq -cs 'map(select(length > 0))')
+updates_json=$(jq -cn --argjson pkgs "$packages_json" --argjson vers "$(printf '%s\n' "${updated_versions[@]:-}" | jq -R . | jq -cs 'map(select(length > 0))')" '
+  [range(0; ($pkgs|length)) | {pkgname: $pkgs[.], latest: $vers[.], path: ("packages/" + $pkgs[.])}]
+')
 
 {
   echo "any_update=${any_update}"
-  echo "kazumi_update=${kazumi_update}"
-  echo "clawx_update=${clawx_update}"
-  echo "animeko_update=${animeko_update}"
-  echo "echomusic_update=${echomusic_update}"
-  echo "surf_update=${surf_update}"
-  echo "kazumi_latest=${kazumi_latest}"
-  echo "clawx_latest=${clawx_latest}"
-  echo "animeko_latest=${animeko_latest}"
-  echo "echomusic_latest=${echomusic_latest}"
-  echo "surf_latest=${surf_latest}"
+  echo "updated_packages=${packages_json}"
+  echo "updates_json=${updates_json}"
 } >> "$GITHUB_OUTPUT"

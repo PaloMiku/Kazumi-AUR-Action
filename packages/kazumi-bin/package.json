@@ -1,0 +1,10 @@
+{
+  "pkgname": "kazumi-bin",
+  "repo": "Predidit/Kazumi",
+  "release_strategy": "github_latest",
+  "allow_prerelease": false,
+  "tag_to_pkgver": "identity",
+  "source_field": "source",
+  "source_template": "kazumi-{pkgver}.deb::https://github.com/Predidit/Kazumi/releases/download/{tag}/Kazumi_linux_{pkgver}_amd64.deb",
+  "checksum_field": "sha512sums"
+}

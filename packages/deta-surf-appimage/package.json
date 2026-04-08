@@ -1,0 +1,10 @@
+{
+  "pkgname": "deta-surf-appimage",
+  "repo": "deta/surf",
+  "release_strategy": "github_latest",
+  "allow_prerelease": false,
+  "tag_to_pkgver": "surf_beta",
+  "source_field": "source_x86_64",
+  "source_template": "Surf-{tag}.x86_64.AppImage::https://github.com/deta/surf/releases/download/{tag}/Surf-{tag}.x86_64.AppImage",
+  "checksum_field": "sha512sums_x86_64"
+}

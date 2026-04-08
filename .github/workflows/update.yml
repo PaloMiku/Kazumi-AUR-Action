@@ -6,87 +6,51 @@ on:
   workflow_dispatch:
 
 jobs:
-  update-aur:
+  detect-updates:
     runs-on: ubuntu-latest
+    outputs:
+      any_update: ${{ steps.detect.outputs.any_update }}
+      updated_packages: ${{ steps.detect.outputs.updated_packages }}
+      updates_json: ${{ steps.detect.outputs.updates_json }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
 
       - name: Detect upstream updates
         id: detect
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: ./scripts/detect-updates.sh
 
       - name: Commit updated files to repository
         if: steps.detect.outputs.any_update == 'true'
         env:
-          KAZUMI_UPDATE: ${{ steps.detect.outputs.kazumi_update }}
-          CLAWX_UPDATE: ${{ steps.detect.outputs.clawx_update }}
-          ANIMEKO_UPDATE: ${{ steps.detect.outputs.animeko_update }}
-          ECHOMUSIC_UPDATE: ${{ steps.detect.outputs.echomusic_update }}
-          SURF_UPDATE: ${{ steps.detect.outputs.surf_update }}
-          KAZUMI_LATEST: ${{ steps.detect.outputs.kazumi_latest }}
-          CLAWX_LATEST: ${{ steps.detect.outputs.clawx_latest }}
-          ANIMEKO_LATEST: ${{ steps.detect.outputs.animeko_latest }}
-          ECHOMUSIC_LATEST: ${{ steps.detect.outputs.echomusic_latest }}
-          SURF_LATEST: ${{ steps.detect.outputs.surf_latest }}
+          UPDATED_PACKAGES: ${{ steps.detect.outputs.updated_packages }}
         run: ./scripts/commit-updates.sh
 
-      - name: Publish kazumi-bin to AUR
-        if: steps.detect.outputs.kazumi_update == 'true'
-        uses: KSXGitHub/github-actions-deploy-aur@v4.1.2
+  publish-aur:
+    needs: detect-updates
+    if: needs.detect-updates.outputs.any_update == 'true'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        package: ${{ fromJson(needs.detect-updates.outputs.updates_json) }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
         with:
-          pkgname: kazumi-bin
-          pkgbuild: ./packages/kazumi-bin/PKGBUILD
-          commit_username: "PaloMiku"
-          commit_email: "palomiku@outlook.com"
-          ssh_private_key: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
-          commit_message: "Update to ${{ steps.detect.outputs.kazumi_latest }}"
-          ssh_keyscan_types: rsa,ecdsa,ed25519
+          ref: ${{ github.ref_name }}
 
-      - name: Publish clawx-bin to AUR
-        if: steps.detect.outputs.clawx_update == 'true'
+      - name: Publish package to AUR
         uses: KSXGitHub/github-actions-deploy-aur@v4.1.2
         with:
-          pkgname: clawx-bin
-          pkgbuild: ./packages/clawx-bin/PKGBUILD
+          pkgname: ${{ matrix.package.pkgname }}
+          pkgbuild: ./${{ matrix.package.path }}/PKGBUILD
           commit_username: "PaloMiku"
           commit_email: "palomiku@outlook.com"
           ssh_private_key: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
-          commit_message: "Update to ${{ steps.detect.outputs.clawx_latest }}"
-          ssh_keyscan_types: rsa,ecdsa,ed25519
-
-      - name: Publish animeko-appimage-beta to AUR
-        if: steps.detect.outputs.animeko_update == 'true'
-        uses: KSXGitHub/github-actions-deploy-aur@v4.1.2
-        with:
-          pkgname: animeko-appimage-beta
-          pkgbuild: ./packages/animeko-appimage-beta/PKGBUILD
-          commit_username: "PaloMiku"
-          commit_email: "palomiku@outlook.com"
-          ssh_private_key: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
-          commit_message: "Update to ${{ steps.detect.outputs.animeko_latest }}"
-          ssh_keyscan_types: rsa,ecdsa,ed25519
-
-      - name: Publish echomusic-bin to AUR
-        if: steps.detect.outputs.echomusic_update == 'true'
-        uses: KSXGitHub/github-actions-deploy-aur@v4.1.2
-        with:
-          pkgname: echomusic-bin
-          pkgbuild: ./packages/echomusic-bin/PKGBUILD
-          commit_username: "PaloMiku"
-          commit_email: "palomiku@outlook.com"
-          ssh_private_key: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
-          commit_message: "Update to ${{ steps.detect.outputs.echomusic_latest }}"
-          ssh_keyscan_types: rsa,ecdsa,ed25519
-
-      - name: Publish deta-surf-appimage to AUR
-        if: steps.detect.outputs.surf_update == 'true'
-        uses: KSXGitHub/github-actions-deploy-aur@v4.1.2
-        with:
-          pkgname: deta-surf-appimage
-          pkgbuild: ./packages/deta-surf-appimage/PKGBUILD
-          commit_username: "PaloMiku"
-          commit_email: "palomiku@outlook.com"
-          ssh_private_key: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
-          commit_message: "Update to ${{ steps.detect.outputs.surf_latest }}"
+          commit_message: "Update to ${{ matrix.package.latest }}"
           ssh_keyscan_types: rsa,ecdsa,ed25519
