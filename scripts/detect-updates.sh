@@ -6,17 +6,20 @@ KAZUMI_API="https://api.github.com/repos/Predidit/Kazumi/releases/latest"
 CLAWX_API="https://api.github.com/repos/ValueCell-ai/ClawX/releases/latest"
 ANIMEKO_API="https://api.github.com/repos/open-ani/animeko/releases?per_page=100"
 ECHOMUSIC_API="https://api.github.com/repos/hoowhoami/EchoMusic/releases/latest"
+SURF_API="https://api.github.com/repos/deta/surf/releases/latest"
 
 KAZUMI_PKG="packages/kazumi-bin/PKGBUILD"
 CLAWX_PKG="packages/clawx-bin/PKGBUILD"
 ANIMEKO_PKG="packages/animeko-appimage-beta/PKGBUILD"
 ECHOMUSIC_PKG="packages/echomusic-bin/PKGBUILD"
+SURF_PKG="packages/deta-surf-appimage/PKGBUILD"
 
 required_files=(
   "$KAZUMI_PKG"
   "$CLAWX_PKG"
   "$ANIMEKO_PKG"
   "$ECHOMUSIC_PKG"
+  "$SURF_PKG"
 )
 
 for file in "${required_files[@]}"; do
@@ -67,6 +70,16 @@ normalize_animeko_source_ver() {
   printf '%s' "$pkgver" | sed -E 's/(alpha|beta)/-\1/g; s/-{2,}/-/g'
 }
 
+normalize_surf_pkgver() {
+  local tag="$1"
+  printf '%s' "$tag" | sed -E 's/-beta\./beta/g; s/-rc\./rc/g'
+}
+
+normalize_surf_source_ver() {
+  local pkgver="$1"
+  printf '%s' "$pkgver" | sed -E 's/beta/-beta./; s/rc/-rc./'
+}
+
 set_animeko_sha512() {
   local pkgfile="$1"
   local source_url="$2"
@@ -74,6 +87,34 @@ set_animeko_sha512() {
 
   sha=$(download_sha512 "$source_url")
   sed -i -E "s|^sha512sums_x86_64=.*|sha512sums_x86_64=('${sha}')|" "$pkgfile"
+}
+
+update_surf_package() {
+  local release_json latest_tag latest current source_ver source_url
+
+  release_json=$(curl -fsSL "$SURF_API")
+  latest_tag=$(printf '%s' "$release_json" | jq -r '.tag_name')
+  surf_latest=$(normalize_surf_pkgver "$latest_tag")
+  current=$(extract_pkgver "$SURF_PKG")
+
+  if [ "$(printf '%s' "$release_json" | jq -r '.prerelease')" = "true" ]; then
+    surf_update=false
+    echo "deta-surf-appimage latest release is prerelease (${latest_tag}), skip update"
+    return
+  fi
+
+  if [ "$surf_latest" != "$current" ]; then
+    surf_update=true
+    sed -i -E "s/^pkgver=\"?.*\"?$/pkgver=\"${surf_latest}\"/" "$SURF_PKG"
+    source_ver=$(normalize_surf_source_ver "$surf_latest")
+    source_url="https://github.com/deta/surf/releases/download/${source_ver}/Surf-${source_ver}.x86_64.AppImage"
+    sed -i -E "s|^source_x86_64=.*|source_x86_64=(\"Surf-${source_ver}.x86_64.AppImage::${source_url}\")|" "$SURF_PKG"
+    set_animeko_sha512 "$SURF_PKG" "$source_url"
+    echo "deta-surf-appimage update: ${current} -> ${surf_latest}"
+  else
+    surf_update=false
+    echo "deta-surf-appimage already latest: ${current}"
+  fi
 }
 
 update_stable_deb_package() {
@@ -147,6 +188,7 @@ kazumi_update=false
 clawx_update=false
 animeko_update=false
 echomusic_update=false
+surf_update=false
 
 update_stable_deb_package \
   "kazumi" \
@@ -171,8 +213,10 @@ update_stable_deb_package \
   "https://github.com/hoowhoami/EchoMusic/releases/download/v%s/EchoMusic-%s-linux-amd64.deb" \
   true
 
+update_surf_package
+
 any_update=false
-if [ "$kazumi_update" = true ] || [ "$clawx_update" = true ] || [ "$animeko_update" = true ] || [ "$echomusic_update" = true ]; then
+if [ "$kazumi_update" = true ] || [ "$clawx_update" = true ] || [ "$animeko_update" = true ] || [ "$echomusic_update" = true ] || [ "$surf_update" = true ]; then
   any_update=true
 fi
 
@@ -182,8 +226,10 @@ fi
   echo "clawx_update=${clawx_update}"
   echo "animeko_update=${animeko_update}"
   echo "echomusic_update=${echomusic_update}"
+  echo "surf_update=${surf_update}"
   echo "kazumi_latest=${kazumi_latest}"
   echo "clawx_latest=${clawx_latest}"
   echo "animeko_latest=${animeko_latest}"
   echo "echomusic_latest=${echomusic_latest}"
+  echo "surf_latest=${surf_latest}"
 } >> "$GITHUB_OUTPUT"

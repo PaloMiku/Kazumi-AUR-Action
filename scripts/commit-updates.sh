@@ -6,10 +6,12 @@ kazumi_update="${KAZUMI_UPDATE:-false}"
 clawx_update="${CLAWX_UPDATE:-false}"
 animeko_update="${ANIMEKO_UPDATE:-false}"
 echomusic_update="${ECHOMUSIC_UPDATE:-false}"
+surf_update="${SURF_UPDATE:-false}"
 kazumi_latest="${KAZUMI_LATEST:-}"
 clawx_latest="${CLAWX_LATEST:-}"
 animeko_latest="${ANIMEKO_LATEST:-}"
 echomusic_latest="${ECHOMUSIC_LATEST:-}"
+surf_latest="${SURF_LATEST:-}"
 git_ref="${GITHUB_REF:-}"
 
 git config user.name "PaloMiku"
@@ -19,7 +21,8 @@ git add \
   packages/kazumi-bin/PKGBUILD \
   packages/clawx-bin/PKGBUILD \
   packages/animeko-appimage-beta/PKGBUILD \
-  packages/echomusic-bin/PKGBUILD
+  packages/echomusic-bin/PKGBUILD \
+  packages/deta-surf-appimage/PKGBUILD
 
 updates=()
 if [ "$kazumi_update" = "true" ]; then
@@ -33,6 +36,9 @@ if [ "$animeko_update" = "true" ]; then
 fi
 if [ "$echomusic_update" = "true" ]; then
   updates+=("echomusic-bin:${echomusic_latest}")
+fi
+if [ "$surf_update" = "true" ]; then
+  updates+=("deta-surf-appimage:${surf_latest}")
 fi
 
 if git diff --cached --quiet; then
