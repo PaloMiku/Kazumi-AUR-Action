@@ -18,6 +18,9 @@ jobs:
         with:
           ref: ${{ github.ref_name }}
 
+      - name: Validate package metadata
+        run: ./scripts/validate-packages.sh
+
       - name: Detect upstream updates
         id: detect
         env:

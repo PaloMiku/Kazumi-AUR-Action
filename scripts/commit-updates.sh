@@ -26,10 +26,14 @@ for pkgname in "${updated_packages[@]}"; do
     exit 1
   fi
 
-  paths_to_add+=("${pkgdir}/PKGBUILD")
-  if [ -f "${pkgdir}/.SRCINFO" ]; then
-    paths_to_add+=("${pkgdir}/.SRCINFO")
+  if [ ! -f "${pkgdir}/PKGBUILD" ]; then
+    echo "Missing PKGBUILD in ${pkgdir}" >&2
+    exit 1
   fi
+
+  makepkg --printsrcinfo > "${pkgdir}/.SRCINFO"
+
+  paths_to_add+=("${pkgdir}/PKGBUILD" "${pkgdir}/.SRCINFO")
 
   pkgver=$(sed -nE "s/^pkgver=\"?([^\"']+)\"?$/\1/p" "${pkgdir}/PKGBUILD" | head -n1)
   update_labels+=("${pkgname}:${pkgver}")
