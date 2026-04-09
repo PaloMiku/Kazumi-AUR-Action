@@ -221,6 +221,10 @@ updates_json=$(jq -cn --argjson pkgs "$packages_json" --argjson vers "$(printf '
 
 {
   echo "any_update=${any_update}"
-  echo "updated_packages=${packages_json}"
-  echo "updates_json=${updates_json}"
+  echo "updated_packages<<EOF"
+  printf '%s\n' "$packages_json"
+  echo "EOF"
+  echo "updates_json<<EOF"
+  printf '%s\n' "$updates_json"
+  echo "EOF"
 } >> "$GITHUB_OUTPUT"
