@@ -14,6 +14,11 @@ required_json_fields=(
   checksum_field
 )
 
+if ! command -v makepkg >/dev/null 2>&1; then
+  echo "makepkg is required for validation but was not found in PATH." >&2
+  exit 1
+fi
+
 metadata_files=()
 while IFS= read -r metadata_file; do
   metadata_files+=("$metadata_file")

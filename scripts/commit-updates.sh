@@ -5,6 +5,11 @@ set -euo pipefail
 updated_packages_json="${UPDATED_PACKAGES:-[]}"
 git_ref="${GITHUB_REF:-}"
 
+if ! command -v makepkg >/dev/null 2>&1; then
+  echo "makepkg is required for commit-updates but was not found in PATH." >&2
+  exit 1
+fi
+
 git config user.name "PaloMiku"
 git config user.email "palomiku@outlook.com"
 
@@ -31,8 +36,10 @@ for pkgname in "${updated_packages[@]}"; do
     exit 1
   fi
 
-  makepkg --printsrcinfo > "${pkgdir}/.SRCINFO"
-
+  (
+    cd "$pkgdir"
+    makepkg --printsrcinfo > .SRCINFO
+  )
   paths_to_add+=("${pkgdir}/PKGBUILD" "${pkgdir}/.SRCINFO")
 
   pkgver=$(sed -nE "s/^pkgver=\"?([^\"']+)\"?$/\1/p" "${pkgdir}/PKGBUILD" | head -n1)
