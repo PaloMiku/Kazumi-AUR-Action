@@ -25,20 +25,29 @@ jobs:
           pacman -Syu --noconfirm
           pacman -S --noconfirm base-devel jq curl git openssh
 
+      - name: Create build user
+        run: |
+          useradd -m -u 1001 builder
+          chown -R builder:builder "$GITHUB_WORKSPACE"
+
       - name: Validate package metadata
-        run: ./scripts/validate-packages.sh
+        run: runuser -u builder -- ./scripts/validate-packages.sh
 
       - name: Detect upstream updates
         id: detect
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: ./scripts/detect-updates.sh
+        run: |
+          tmp_output="$GITHUB_WORKSPACE/.github_output_detect"
+          rm -f "$tmp_output"
+          runuser -u builder -- env GITHUB_OUTPUT="$tmp_output" GITHUB_TOKEN="$GITHUB_TOKEN" ./scripts/detect-updates.sh
+          cat "$tmp_output" >> "$GITHUB_OUTPUT"
 
       - name: Commit updated files to repository
         if: steps.detect.outputs.any_update == 'true'
         env:
           UPDATED_PACKAGES: ${{ steps.detect.outputs.updated_packages }}
-        run: ./scripts/commit-updates.sh
+        run: runuser -u builder -- env GITHUB_REF="$GITHUB_REF" UPDATED_PACKAGES="$UPDATED_PACKAGES" ./scripts/commit-updates.sh
 
   publish-aur:
     needs: detect-updates
