@@ -1,0 +1,23 @@
+pkgbase = echomusic-bin
+	pkgdesc = EchoMusic desktop client
+	pkgver = 2.0.9
+	pkgrel = 1
+	url = https://github.com/hoowhoami/EchoMusic
+	arch = x86_64
+	license = MIT
+	depends = gtk3
+	depends = libnotify
+	depends = nss
+	depends = libxss
+	depends = libxtst
+	depends = xdg-utils
+	depends = at-spi2-core
+	depends = util-linux-libs
+	depends = libsecret
+	optdepends = libappindicator-gtk3: tray indicator support
+	provides = echomusic
+	conflicts = echomusic
+	source = EchoMusic-2.0.9-linux-amd64.deb::https://github.com/hoowhoami/EchoMusic/releases/download/v2.0.9/EchoMusic-2.0.9-linux-amd64.deb
+	sha512sums = cba60eb0d260b96b01c31eb38f3200887bfa98509ac3b9e8d44658dbb018b5d88eb944d765083d0239ad13c1c0783d973565436edc0ece44c113c926d6fa1d37
+
+pkgname = echomusic-bin
