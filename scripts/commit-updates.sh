@@ -10,9 +10,6 @@ if ! command -v makepkg >/dev/null 2>&1; then
   exit 1
 fi
 
-git config user.name "PaloMiku"
-git config user.email "palomiku@outlook.com"
-
 mapfile -t updated_packages < <(printf '%s' "$updated_packages_json" | jq -r '.[]')
 
 if [ "${#updated_packages[@]}" -eq 0 ]; then
@@ -53,7 +50,7 @@ if git diff --cached --quiet; then
   exit 0
 fi
 
-git commit -m "Update ${update_labels[*]}"
+git -c user.name="PaloMiku" -c user.email="palomiku@outlook.com" commit -m "Update ${update_labels[*]}"
 
 if [ -z "$git_ref" ]; then
   echo "GITHUB_REF is required for push" >&2

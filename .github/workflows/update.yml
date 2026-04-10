@@ -14,6 +14,7 @@ jobs:
       any_update: ${{ steps.detect.outputs.any_update }}
       updated_packages: ${{ steps.detect.outputs.updated_packages }}
       updates_json: ${{ steps.detect.outputs.updates_json }}
+      updated_ref: ${{ steps.capture-ref.outputs.updated_ref }}
     steps:
       - name: Install build tools
         run: |
@@ -50,6 +51,15 @@ jobs:
           UPDATED_PACKAGES: ${{ steps.detect.outputs.updated_packages }}
         run: runuser -u builder -- env GITHUB_REF="$GITHUB_REF" UPDATED_PACKAGES="$UPDATED_PACKAGES" sh -lc 'cd "$GITHUB_WORKSPACE" && ./scripts/commit-updates.sh'
 
+      - name: Capture updated ref
+        if: steps.detect.outputs.any_update == 'true'
+        id: capture-ref
+        run: |
+          tmp_output="$GITHUB_WORKSPACE/.github_output_ref"
+          rm -f "$tmp_output"
+          runuser -u builder -- env GITHUB_OUTPUT="$tmp_output" sh -lc 'cd "$GITHUB_WORKSPACE" && printf "updated_ref=%s\n" "$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"'
+          cat "$tmp_output" >> "$GITHUB_OUTPUT"
+
   publish-aur:
     needs: detect-updates
     if: needs.detect-updates.outputs.any_update == 'true'
@@ -69,11 +79,8 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.ref_name }}
+          ref: ${{ needs.detect-updates.outputs.updated_ref }}
           fetch-depth: 0
-
-      - name: Sync latest branch state
-        run: git pull --ff-only origin "${{ github.ref_name }}"
 
       - name: Publish package to AUR
         uses: KSXGitHub/github-actions-deploy-aur@v4.1.2
