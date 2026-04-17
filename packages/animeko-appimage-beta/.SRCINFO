@@ -1,7 +1,7 @@
 pkgbase = animeko-appimage-beta
 	pkgdesc = 集找番、追番、看番的一站式弹幕追番平台（Beta 版）
 	pkgver = 5.4.0beta05
-	pkgrel = 2
+	pkgrel = 3
 	url = https://github.com/open-ani/animeko/
 	arch = x86_64
 	license = AGPL-3.0-or-later
@@ -14,8 +14,6 @@ pkgbase = animeko-appimage-beta
 	conflicts = animeko
 	noextract = ani-5.4.0-beta05-linux-x86_64.appimage
 	options = !strip
-	source = animeko-wrapper.sh
-	sha512sums = SKIP
 	source_x86_64 = https://github.com/open-ani/animeko/releases/download/v5.4.0-beta05/ani-5.4.0-beta05-linux-x86_64.appimage
 	sha512sums_x86_64 = SKIP
 
