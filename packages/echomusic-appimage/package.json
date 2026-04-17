@@ -1,0 +1,10 @@
+{
+  "pkgname": "echomusic-appimage",
+  "repo": "hoowhoami/EchoMusic",
+  "release_strategy": "github_latest",
+  "allow_prerelease": false,
+  "tag_to_pkgver": "strip_v",
+  "source_field": "source_x86_64",
+  "source_template": "EchoMusic-{pkgver}-linux-x86_64.AppImage::https://github.com/hoowhoami/EchoMusic/releases/download/{tag}/EchoMusic-{pkgver}-linux-x86_64.AppImage",
+  "checksum_field": "sha512sums_x86_64"
+}
