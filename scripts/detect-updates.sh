@@ -56,6 +56,25 @@ update_checksum_field() {
   sed -i -E "s|^${field}=.*$|${field}=('${checksum}')|" "$pkgfile"
 }
 
+update_source_entry() {
+  local pkgfile="$1"
+  local pkgver="$2"
+  local source_tag="$3"
+  local field="$4"
+  local template="$5"
+  local checksum_field="$6"
+  local source_value source_url
+
+  source_value=$(render_source_template "$template" "$pkgver" "$source_tag")
+  source_url=${source_value##*::}
+  if [ "$source_url" = "$source_value" ]; then
+    source_url="$source_value"
+  fi
+
+  update_array_field "$pkgfile" "$field" "$source_value"
+  update_checksum_field "$pkgfile" "$checksum_field" "$source_url"
+}
+
 normalize_tag_to_pkgver() {
   local strategy="$1"
   local tag="$2"
@@ -174,9 +193,7 @@ while IFS= read -r metadata_file; do
   release_strategy=$(jq -r '.release_strategy' "$metadata_file")
   allow_prerelease=$(jq -r '.allow_prerelease' "$metadata_file")
   tag_to_pkgver=$(jq -r '.tag_to_pkgver' "$metadata_file")
-  source_field=$(jq -r '.source_field' "$metadata_file")
-  source_template=$(jq -r '.source_template' "$metadata_file")
-  checksum_field=$(jq -r '.checksum_field' "$metadata_file")
+  has_multi_source=$(jq -r 'has("sources")' "$metadata_file")
 
   release_json=$(select_release_json "$release_strategy" "$repo" "$allow_prerelease")
   if [ -z "$release_json" ] || [ "$release_json" = "null" ]; then
@@ -190,15 +207,19 @@ while IFS= read -r metadata_file; do
 
   if [ "$latest_pkgver" != "$current_pkgver" ]; then
     source_tag=$(normalize_pkgver_to_tag "$tag_to_pkgver" "$latest_pkgver")
-    source_value=$(render_source_template "$source_template" "$latest_pkgver" "$source_tag")
-    source_url=${source_value##*::}
-    if [ "$source_url" = "$source_value" ]; then
-      source_url="$source_value"
-    fi
 
     update_pkgbuild_field "$pkgbuild_file" "pkgver" "\"${latest_pkgver}\""
-    update_array_field "$pkgbuild_file" "$source_field" "$source_value"
-    update_checksum_field "$pkgbuild_file" "$checksum_field" "$source_url"
+
+    if [ "$has_multi_source" = "true" ]; then
+      while IFS=$'\t' read -r source_field source_template checksum_field; do
+        update_source_entry "$pkgbuild_file" "$latest_pkgver" "$source_tag" "$source_field" "$source_template" "$checksum_field"
+      done < <(jq -r '.sources[] | [.field, .template, .checksum_field] | @tsv' "$metadata_file")
+    else
+      source_field=$(jq -r '.source_field' "$metadata_file")
+      source_template=$(jq -r '.source_template' "$metadata_file")
+      checksum_field=$(jq -r '.checksum_field' "$metadata_file")
+      update_source_entry "$pkgbuild_file" "$latest_pkgver" "$source_tag" "$source_field" "$source_template" "$checksum_field"
+    fi
 
     updated_packages+=("$pkgname")
     updated_versions+=("$latest_pkgver")

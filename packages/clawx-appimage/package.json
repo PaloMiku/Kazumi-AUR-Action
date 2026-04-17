@@ -1,0 +1,19 @@
+{
+  "pkgname": "clawx-appimage",
+  "repo": "ValueCell-ai/ClawX",
+  "release_strategy": "github_latest",
+  "allow_prerelease": false,
+  "tag_to_pkgver": "strip_v",
+  "sources": [
+    {
+      "field": "source_x86_64",
+      "template": "ClawX-{pkgver}-linux-x86_64.AppImage::https://github.com/ValueCell-ai/ClawX/releases/download/{tag}/ClawX-{pkgver}-linux-x86_64.AppImage",
+      "checksum_field": "sha512sums_x86_64"
+    },
+    {
+      "field": "source_aarch64",
+      "template": "ClawX-{pkgver}-linux-arm64.AppImage::https://github.com/ValueCell-ai/ClawX/releases/download/{tag}/ClawX-{pkgver}-linux-arm64.AppImage",
+      "checksum_field": "sha512sums_aarch64"
+    }
+  ]
+}

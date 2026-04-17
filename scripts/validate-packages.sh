@@ -9,9 +9,6 @@ required_json_fields=(
   release_strategy
   allow_prerelease
   tag_to_pkgver
-  source_field
-  source_template
-  checksum_field
 )
 
 if ! command -v makepkg >/dev/null 2>&1; then
@@ -46,6 +43,20 @@ for metadata_file in "${metadata_files[@]}"; do
       exit 1
     fi
   done
+
+  has_single_source=$(jq -r 'has("source_field") and has("source_template") and has("checksum_field")' "$metadata_file")
+  has_multi_source=$(jq -r 'has("sources")' "$metadata_file")
+  if [ "$has_single_source" != "true" ] && [ "$has_multi_source" != "true" ]; then
+    echo "Missing source metadata in ${metadata_file}: require source_field/source_template/checksum_field or sources[]" >&2
+    exit 1
+  fi
+
+  if [ "$has_multi_source" = "true" ]; then
+    if ! jq -e '.sources | type == "array" and length > 0 and all(.[]; has("field") and has("template") and has("checksum_field"))' "$metadata_file" >/dev/null; then
+      echo "Invalid sources[] metadata in ${metadata_file}" >&2
+      exit 1
+    fi
+  fi
 
   pkgname=$(jq -r '.pkgname' "$metadata_file")
   actual_pkgname=$(sed -nE 's/^pkgname=([^[:space:]]+)$/\1/p' "$pkgbuild_file" | head -n1)

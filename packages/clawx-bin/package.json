@@ -4,7 +4,16 @@
   "release_strategy": "github_latest",
   "allow_prerelease": false,
   "tag_to_pkgver": "strip_v",
-  "source_field": "source",
-  "source_template": "ClawX-{pkgver}-linux-amd64.deb::https://github.com/ValueCell-ai/ClawX/releases/download/{tag}/ClawX-{pkgver}-linux-amd64.deb",
-  "checksum_field": "sha512sums"
+  "sources": [
+    {
+      "field": "source_x86_64",
+      "template": "ClawX-{pkgver}-linux-amd64.deb::https://github.com/ValueCell-ai/ClawX/releases/download/{tag}/ClawX-{pkgver}-linux-amd64.deb",
+      "checksum_field": "sha512sums_x86_64"
+    },
+    {
+      "field": "source_aarch64",
+      "template": "ClawX-{pkgver}-linux-arm64.deb::https://github.com/ValueCell-ai/ClawX/releases/download/{tag}/ClawX-{pkgver}-linux-arm64.deb",
+      "checksum_field": "sha512sums_aarch64"
+    }
+  ]
 }
