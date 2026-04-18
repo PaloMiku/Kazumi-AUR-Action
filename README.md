@@ -14,15 +14,18 @@
 4. 为更新过的包重新生成 `.SRCINFO`。
 5. 将更新后的文件提交并推送回当前仓库。
 6. 将每个更新过的包发布到 AUR。
+7. 更新每个包目录下的 README.md 页面。
 
 ## 仓库结构
 
 - `packages/<pkgname>/PKGBUILD`：发布到 AUR 的包定义文件。
 - `packages/<pkgname>/.SRCINFO`：生成出来的 AUR 元数据文件。
 - `packages/<pkgname>/package.json`：仓库内部使用的更新规则配置。
+- `packages/<pkgname>/README.md`：自动生成的包信息展示页面。
 - `scripts/validate-packages.sh`：元数据和 `PKGBUILD` 校验脚本。
 - `scripts/detect-updates.sh`：Release 检测与 `PKGBUILD` 更新脚本。
 - `scripts/commit-updates.sh`：`.SRCINFO` 生成、提交和推送脚本。
+- `scripts/generate-package-readme.sh`：为每个包目录生成 README.md 脚本。
 
 ## 包元数据格式
 

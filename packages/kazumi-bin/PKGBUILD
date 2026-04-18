@@ -29,4 +29,17 @@ package() {
     bsdtar -xf "${_data_archive}" -C "${_datadir}"
 
     cp -a "${_datadir}/." "${pkgdir}/"
+
+    mkdir -p "${pkgdir}/usr/share/applications"
+    cat > "${pkgdir}/usr/share/applications/io.github.Predidit.Kazumi.desktop" <<EOF
+[Desktop Entry]
+Name=Kazumi
+Comment=番剧采集APP，支持流媒体在线观看
+Exec=/opt/Kazumi/kazumi
+Icon=io.github.Predidit.Kazumi
+Terminal=false
+Type=Application
+Categories=Network;Video;
+Keywords=anime;bilibili;
+EOF
 }

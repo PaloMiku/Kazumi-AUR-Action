@@ -20,7 +20,7 @@
 ## 关键文件
 
 - `.github/workflows/update.yml`
-  GitHub Actions 自动更新和发布流程。
+  GitHub Actions 自动更新、发布到 AUR 和生成包 README 的完整流程。
 
 - `scripts/validate-packages.sh`
   校验所有包的元数据和 `PKGBUILD` 约束。
@@ -30,6 +30,9 @@
 
 - `scripts/commit-updates.sh`
   重新生成 `.SRCINFO`，提交变更并推送。
+
+- `scripts/generate-package-readme.sh`
+  为每个包目录生成 README.md，显示包来源、版本等信息。
 
 - `packages/<pkgname>/package.json`
   每个包的更新规则定义。
@@ -179,6 +182,7 @@ DRY_RUN=true GITHUB_OUTPUT=/tmp/aur-action-output ./scripts/detect-updates.sh
 bash -n scripts/detect-updates.sh
 bash -n scripts/validate-packages.sh
 bash -n scripts/commit-updates.sh
+bash -n scripts/generate-package-readme.sh
 ./scripts/validate-packages.sh
 ```
 
