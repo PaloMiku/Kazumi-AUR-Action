@@ -1,0 +1,10 @@
+{
+  "pkgname": "clashmi-bin",
+  "repo": "KaringX/clashmi",
+  "release_strategy": "github_latest",
+  "allow_prerelease": false,
+  "tag_to_pkgver": "strip_v",
+  "source_field": "source",
+  "source_template": "clashmi-{pkgver}_linux_amd64.deb::https://github.com/KaringX/clashmi/releases/download/{tag}/clashmi_{pkgver}_linux_amd64.deb",
+  "checksum_field": "sha512sums"
+}
