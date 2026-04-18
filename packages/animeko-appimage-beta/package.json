@@ -3,6 +3,7 @@
   "repo": "open-ani/animeko",
   "release_strategy": "github_beta",
   "allow_prerelease": true,
+  "tag_pattern": "beta",
   "tag_to_pkgver": "animeko_beta",
   "source_field": "source_x86_64",
   "source_template": "https://github.com/open-ani/animeko/releases/download/{tag}/ani-{tag_no_v}-linux-x86_64.appimage",
