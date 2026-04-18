@@ -92,3 +92,38 @@ jobs:
           ssh_private_key: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
           commit_message: "Update to ${{ matrix.package.latest }}"
           ssh_keyscan_types: rsa,ecdsa,ed25519
+
+  update-readme:
+    needs: detect-updates
+    if: needs.detect-updates.outputs.any_update == 'true'
+    runs-on: ubuntu-latest
+    container:
+      image: archlinux:latest
+    steps:
+      - name: Install tools
+        run: |
+          pacman -Syu --noconfirm
+          pacman -S --noconfirm jq git
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.detect-updates.outputs.updated_ref }}
+          fetch-depth: 0
+
+      - name: Update package READMEs
+        run: ./scripts/generate-package-readme.sh
+
+      - name: Commit README changes
+        run: |
+          git config --local user.email "palo-miku@users.noreply.github.com"
+          git config --local user.name "PaloMiku Bot"
+
+          if git diff --stat --quiet packages/*/README.md 2>/dev/null; then
+            echo "No README changes to commit"
+            exit 0
+          fi
+
+          git add packages/*/README.md
+          git commit -m "chore: update package READMEs"
+          git push
