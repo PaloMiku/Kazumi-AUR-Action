@@ -21,56 +21,63 @@ jobs:
       - name: Install tools
         run: |
           pacman -Syu --noconfirm
-          pacman -S --noconfirm jq git
+          pacman -S --noconfirm jq git base-devel
 
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
+      - name: Create build user
+        run: |
+          useradd -m -u 1001 builder
+          chown -R builder:builder "$GITHUB_WORKSPACE"
+
       - name: Detect new packages not in AUR
         id: detect
         run: |
-          packages_dir="packages"
-          
-          if [ -n "${{ github.event.inputs.packages }}" ]; then
-            IFS=',' read -ra input_packages <<< "${{ github.event.inputs.packages }}"
-            for pkg in "${input_packages[@]}"; do
-              pkg=$(echo "$pkg" | xargs)
-              if [ -d "${packages_dir}/${pkg}" ]; then
-                new_packages+=("$pkg")
-              fi
-            done
-          else
-            while IFS= read -r pkgname; do
-              if [ -d "${packages_dir}/${pkgname}" ]; then
-                new_packages+=("$pkgname")
-              fi
-            done < <(find "$packages_dir" -mindepth 2 -maxdepth 2 -name package.json -exec dirname {} \; | xargs -I{} basename {} | sort)
-          fi
-          
-          if [ ${#new_packages[@]} -eq 0 ]; then
-            echo "new_packages=[]" >> "$GITHUB_OUTPUT"
-            echo "new_packages_json=[]" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-          
-          echo "Detected new packages: ${new_packages[*]}"
-          
-          packages_json=$(printf '%s\n' "${new_packages[@]}" | jq -R . | jq -cs 'map(select(length > 0))')
-          
-          new_packages_json=$(jq -cn --argjson pkgs "$packages_json" '
-            [range(0; ($pkgs|length)) | {pkgname: $pkgs[.], path: ("packages/" + $pkgs[.])}]
-          ')
-          
-          echo "new_packages=${new_packages[*]}" >> "$GITHUB_OUTPUT"
-          echo "new_packages_json<<EOF" >> "$GITHUB_OUTPUT"
-          printf '%s\n' "$new_packages_json" >> "$GITHUB_OUTPUT"
-          echo "EOF" >> "$GITHUB_OUTPUT"
+          runuser -u builder -- sh -c '
+            packages_dir="packages"
+            
+            if [ -n "${{ github.event.inputs.packages }}" ]; then
+              IFS=, read -ra input_packages <<< "${{ github.event.inputs.packages }}"
+              for pkg in "${input_packages[@]}"; do
+                pkg=$(echo "$pkg" | xargs)
+                if [ -d "${packages_dir}/${pkg}" ]; then
+                  new_packages+=("$pkg")
+                fi
+              done
+            else
+              while IFS= read -r pkgname; do
+                if [ -d "${packages_dir}/${pkgname}" ]; then
+                  new_packages+=("$pkgname")
+                fi
+              done < <(find "$packages_dir" -mindepth 2 -maxdepth 2 -name package.json -exec dirname {} \; | xargs -I{} basename {} | sort)
+            fi
+            
+            if [ ${#new_packages[@]} -eq 0 ]; then
+              echo "new_packages=[]" >> "$GITHUB_OUTPUT"
+              echo "new_packages_json=[]" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+            
+            echo "Detected new packages: ${new_packages[*]}"
+            
+            packages_json=$(printf "%s\n" "${new_packages[@]}" | jq -R . | jq -cs "map(select(length > 0))")
+            
+            new_packages_json=$(jq -cn --argjson pkgs "$packages_json" "
+              [range(0; (\$pkgs|length)) | {pkgname: \$pkgs[.], path: (\"packages/\" + \$pkgs[.])}]
+            ")
+            
+            echo "new_packages=${new_packages[*]}" >> "$GITHUB_OUTPUT"
+            echo "new_packages_json<<EOF" >> "$GITHUB_OUTPUT"
+            printf "%s\n" "$new_packages_json" >> "$GITHUB_OUTPUT"
+            echo "EOF" >> "$GITHUB_OUTPUT"
+          '
 
       - name: Generate .SRCINFO for new packages
         if: steps.detect.outputs.new_packages != ''
-        run: |
+        run: runuser -u builder -- sh -c '
           for pkgname in ${{ steps.detect.outputs.new_packages }}; do
             pkgdir="packages/${pkgname}"
             if [ -f "${pkgdir}/PKGBUILD" ]; then
@@ -79,32 +86,34 @@ jobs:
               cd - > /dev/null
             fi
           done
+        '
 
       - name: Stage new packages
         if: steps.detect.outputs.new_packages != ''
-        run: |
+        run: runuser -u builder -- sh -c '
           for pkgname in ${{ steps.detect.outputs.new_packages }}; do
             pkgdir="packages/${pkgname}"
             if [ -f "${pkgdir}/PKGBUILD" ]; then
               git add "${pkgdir}/PKGBUILD" "${pkgdir}/.SRCINFO" "${pkgdir}/package.json"
             fi
           done
+        '
 
       - name: Commit new packages
         if: steps.detect.outputs.new_packages != ''
-        run: |
+        run: runuser -u builder -- sh -c '
           if git diff --cached --quiet; then
             echo "No files to commit"
             exit 0
           fi
           
           git -c user.name="PaloMiku" -c user.email="palomiku@outlook.com" commit -m "Add new AUR packages: ${{ steps.detect.outputs.new_packages }}"
+        '
 
       - name: Capture new ref
         if: steps.detect.outputs.new_packages != ''
         id: capture-ref
-        run: |
-          echo "new_ref=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+        run: runuser -u builder -- sh -c 'echo "new_ref=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"'
 
   publish-aur:
     needs: detect-new-packages
