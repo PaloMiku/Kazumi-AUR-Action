@@ -14,7 +14,8 @@ jobs:
     container:
       image: archlinux:latest
     outputs:
-      new_packages: ${{ steps.detect.outputs.new_packages }}
+      has_new_packages: ${{ steps.detect.outputs.has_new_packages }}
+      packages_json: ${{ steps.detect.outputs.packages_json }}
       new_packages_json: ${{ steps.detect.outputs.new_packages_json }}
       new_ref: ${{ steps.capture-ref.outputs.new_ref }}
     steps:
@@ -40,21 +41,25 @@ jobs:
         run: runuser -u builder -- env GITHUB_OUTPUT="$GITHUB_OUTPUT" INPUT_PACKAGES="$INPUT_PACKAGES" sh -lc 'cd "$GITHUB_WORKSPACE" && ./scripts/detect-new-packages.sh'
 
       - name: Generate .SRCINFO
-        if: steps.detect.outputs.new_packages != ''
-        run: runuser -u builder -- sh -lc 'cd "$GITHUB_WORKSPACE" && ./scripts/generate-srcinfo.sh ${{ steps.detect.outputs.new_packages }}'
+        if: steps.detect.outputs.has_new_packages == 'true'
+        env:
+          NEW_PACKAGES_JSON: ${{ steps.detect.outputs.packages_json }}
+        run: runuser -u builder -- env NEW_PACKAGES_JSON="$NEW_PACKAGES_JSON" sh -lc 'cd "$GITHUB_WORKSPACE" && ./scripts/generate-srcinfo.sh'
 
       - name: Stage and commit packages
-        if: steps.detect.outputs.new_packages != ''
-        run: runuser -u builder -- sh -lc 'cd "$GITHUB_WORKSPACE" && ./scripts/stage-new-packages.sh ${{ steps.detect.outputs.new_packages }}'
+        if: steps.detect.outputs.has_new_packages == 'true'
+        env:
+          NEW_PACKAGES_JSON: ${{ steps.detect.outputs.packages_json }}
+        run: runuser -u builder -- env NEW_PACKAGES_JSON="$NEW_PACKAGES_JSON" sh -lc 'cd "$GITHUB_WORKSPACE" && ./scripts/stage-new-packages.sh'
 
       - name: Capture new ref
-        if: steps.detect.outputs.new_packages != ''
+        if: steps.detect.outputs.has_new_packages == 'true'
         id: capture-ref
         run: runuser -u builder -- sh -lc 'cd "$GITHUB_WORKSPACE" && echo "new_ref=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"'
 
   publish-aur:
     needs: detect-new-packages
-    if: needs.detect-new-packages.outputs.new_packages != ''
+    if: needs.detect-new-packages.outputs.has_new_packages == 'true'
     runs-on: ubuntu-latest
     container:
       image: archlinux:latest
@@ -66,7 +71,7 @@ jobs:
       - name: Install publish tools
         run: |
           pacman -Syu --noconfirm
-          pacman -S --noconfirm git
+          pacman -S --noconfirm git openssh
 
       - name: Checkout repository
         uses: actions/checkout@v4
