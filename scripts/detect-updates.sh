@@ -270,6 +270,7 @@ while IFS= read -r metadata_file; do
     source_tag=$(normalize_pkgver_to_tag "$tag_to_pkgver" "$latest_pkgver")
 
     update_pkgbuild_field "$pkgbuild_file" "pkgver" "\"${latest_pkgver}\""
+    update_pkgbuild_field "$pkgbuild_file" "pkgrel" "1"
 
     if [ "$has_multi_source" = "true" ]; then
       while IFS=$'\t' read -r source_field source_template checksum_field; do
