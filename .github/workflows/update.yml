@@ -101,6 +101,9 @@ jobs:
     runs-on: ubuntu-latest
     container:
       image: archlinux:latest
+    defaults:
+      run:
+        working-directory: ${{ github.workspace }}
     steps:
       - name: Install tools
         run: |
