@@ -1,0 +1,14 @@
+{
+  "pkgname": "sidex-bin",
+  "repo": "Sidenai/sidex",
+  "release_strategy": "github_latest",
+  "allow_prerelease": false,
+  "tag_to_pkgver": "strip_v",
+  "sources": [
+    {
+      "field": "source",
+      "template": "SideX_{pkgver}_amd64.deb::https://github.com/Sidenai/sidex/releases/download/{tag}/SideX_{pkgver}_amd64.deb",
+      "checksum_field": "sha512sums"
+    }
+  ]
+}
