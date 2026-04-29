@@ -101,9 +101,6 @@ jobs:
     runs-on: ubuntu-latest
     container:
       image: archlinux:latest
-    defaults:
-      run:
-        working-directory: ${{ github.workspace }}
     steps:
       - name: Install tools
         run: |
@@ -117,12 +114,13 @@ jobs:
           fetch-depth: 0
 
       - name: Update package READMEs
-        run: ./scripts/generate-package-readme.sh
+        run: cd "$GITHUB_WORKSPACE" && ./scripts/generate-package-readme.sh
 
       - name: Commit README changes
         env:
           BRANCH_NAME: ${{ github.ref_name }}
         run: |
+          cd "$GITHUB_WORKSPACE"
           git config --local user.email "palo-miku@users.noreply.github.com"
           git config --local user.name "PaloMiku Bot"
           git pull --ff-only origin "$BRANCH_NAME"
